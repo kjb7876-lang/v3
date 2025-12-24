@@ -3,112 +3,109 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-    <!-- iOS/Android 모바일 풀화면/안전영역 -->
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+    <!-- iOS/Android 풀화면 + 안전영역 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>EgoIdSuper</title>
-    <link rel="stylesheet" crossorigin href="./assets/index-C9ejXq11.css" />
+
+    <link rel="stylesheet" crossorigin href="./assets/index-C9ejXq11.css">
 
     <style>
-      /* ====== 화면 풀(캔버스) ====== */
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #000;
-        touch-action: none;
-      }
       :root{
-        /* 주소창/하단바 변동 대응: JS에서 실측 높이(px)로 갱신 */
         --appH: 100vh;
+        --padR: calc(14px + env(safe-area-inset-right));
+        --padB: calc(14px + env(safe-area-inset-bottom));
+        --padL: calc(12px + env(safe-area-inset-left));
+        --padT: calc(12px + env(safe-area-inset-top));
 
-        /* HUD(좌상/우상) 확대: 면적 9배 느낌 = scale 3 */
-        --hudScale: 3;
+        /* HUD(좌상/우상) 키우기: 면적 9배 느낌이면 scale=3 */
+        --hudScale: 2.8;
 
-        /* 조작 UI(조이스틱/버튼) 안전 여백 */
-        --padR: calc(12px + env(safe-area-inset-right));
-        --padB: calc(12px + env(safe-area-inset-bottom));
-        --padT: calc(10px + env(safe-area-inset-top));
-        --padL: calc(10px + env(safe-area-inset-left));
+        /* 버튼/조이스틱 조작 편의(너무 크면 1.0으로) */
+        --btnScale: 1.2;
+      }
+
+      html, body{
+        margin:0; padding:0;
+        width:100%; height:100%;
+        overflow:hidden;
+        background:#000;
+        touch-action:none;
+        -webkit-text-size-adjust: 100%;
       }
 
       #game-container{
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: var(--appH);
-        overflow: hidden;
-        background: #000;
-      }
-      canvas{
-        width: 100% !important;
-        height: 100% !important;
-        display: block;
+        position:fixed;
+        inset:0;
+        width:100vw;
+        height:var(--appH);
+        overflow:hidden;
+        background:#000;
       }
 
-      /* ====== HUD(좌상/우상) 키우기 ====== */
-      /* 상단 좌측 HUD 블록 */
-      #game-ui-container .absolute.top-4.left-4{
+      canvas{
+        display:block;
+        width:100% !important;
+        height:100% !important;
+      }
+
+      /* ===== HUD: 자동 분류된 요소에만 적용 ===== */
+      .g-ui-hud{
+        position:fixed !important;
         top: var(--padT) !important;
         left: var(--padL) !important;
         transform: scale(var(--hudScale)) !important;
         transform-origin: top left !important;
-        pointer-events: none;
-        z-index: 10001;
+        z-index: 10000 !important;
+        pointer-events: none !important;
       }
-      /* 상단 우측 HUD 블록 */
-      #game-ui-container .absolute.top-4.right-4{
+      .g-ui-hud-tr{
+        position:fixed !important;
         top: var(--padT) !important;
         right: var(--padR) !important;
+        left: auto !important;
         transform: scale(var(--hudScale)) !important;
         transform-origin: top right !important;
-        pointer-events: none;
-        z-index: 10001;
+        z-index: 10000 !important;
+        pointer-events: none !important;
       }
 
-      /* ====== 모바일 조작 UI 위치만 정리(오른쪽 하단) ====== */
-      #mobile-controls-container{
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: var(--appH) !important;
-        pointer-events: none;
+      /* ===== 조이스틱/버튼: 자동 분류된 요소에만 적용 ===== */
+      .g-ui-joystick{
+        position:fixed !important;
+        right: var(--padR) !important;
+        bottom: var(--padB) !important;
+        left:auto !important;
+        top:auto !important;
+        z-index: 10000 !important;
+        transform: scale(var(--btnScale)) !important;
+        transform-origin: bottom right !important;
+      }
+
+      #g-action-dock{
+        position:fixed;
+        right: var(--padR);
+        bottom: calc(var(--padB) + 170px); /* 조이스틱 위 */
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
         z-index: 10000;
+        pointer-events:none;
+        transform: scale(var(--btnScale));
+        transform-origin: bottom right;
+      }
+      #g-action-dock > *{
+        pointer-events:auto;
       }
 
-      /* 조이스틱: 오른쪽 하단 고정 */
-      #joystick-area{
-        left: auto !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        top: auto !important;
-        pointer-events: auto;
-      }
-
-      /* E/R 버튼 묶음: 오른쪽 하단(조이스틱 위) */
-      #mobile-skill-buttons{
-        left: auto !important;
-        right: var(--padR) !important;
-        bottom: calc(var(--padB) + 180px) !important; /* 조이스틱 위쪽 */
-        pointer-events: none;
-      }
-
-      /* AUTO 버튼: 오른쪽 하단(조이스틱 위, E/R 아래) */
-      #mobile-auto-btn{
-        left: auto !important;
-        right: var(--padR) !important;
-        bottom: calc(var(--padB) + 90px) !important;
-        pointer-events: auto;
+      /* 혹시 큰 AUTO 버튼이 따로 있으면 너무 화면을 가리지 않게 살짝만 */
+      .g-ui-auto-big{
+        transform: scale(1.0) !important;
+        transform-origin: bottom right !important;
       }
     </style>
-  </head>
 
-  <body>
-    <div id="game-container"></div>
-
+    <!-- 뷰포트 실제 높이 반영(주소창/하단바 변화 대응) -->
     <script>
-      // 주소창/하단바 변동 대응: 실제 보이는 높이를 --appH로 반영
       (function(){
         function setAppH(){
           var h = window.innerHeight;
@@ -122,6 +119,147 @@
       })();
     </script>
 
+    <!-- UI를 "게임 화면처럼" 따라오게: DOM HUD/버튼을 자동 분류해서 클래스 부여 -->
+    <script>
+      (function(){
+        const TXT = (el)=> (el && (el.innerText||el.textContent||"")).trim();
+
+        function rect(el){ try{return el.getBoundingClientRect();}catch(e){return null;} }
+        function inRange(v,a,b){ return v>=a && v<=b; }
+
+        function findHudBlocks(){
+          const divs = Array.from(document.querySelectorAll('div'));
+          const W = window.innerWidth, H = window.innerHeight;
+
+          // HUD 후보: 상단에 있고, 내부 텍스트에 HP/EXP/Round/BOSS 같은 키워드가 섞여있음
+          const hudCandidates = divs.filter(el=>{
+            const t = TXT(el);
+            if(!t) return false;
+            if(!(t.includes('HP') || t.includes('EXP') || t.includes('Round') || t.includes('BOSS') || t.includes('Lv'))) return false;
+            const r = rect(el); if(!r) return false;
+            if(r.width < 80 || r.height < 30) return false;
+            if(r.top > 140) return false; // 상단 근처
+            return true;
+          });
+
+          // 좌상/우상 하나씩만 잡기
+          let tl=null, tr=null, tlScore=-1, trScore=-1;
+          for(const el of hudCandidates){
+            const r = rect(el);
+            const t = TXT(el);
+            const score = (t.includes('HP')?4:0)+(t.includes('EXP')?3:0)+(t.includes('Lv')?2:0)+(t.includes('Round')?2:0)+(t.includes('BOSS')?2:0);
+            if(r.left < W*0.5){
+              if(score>tlScore){ tlScore=score; tl=el; }
+            }else{
+              if(score>trScore){ trScore=score; tr=el; }
+            }
+          }
+          return {tl, tr};
+        }
+
+        function findJoystick(){
+          // 조이스틱 후보: canvas를 포함한 비교적 큰 정사각형/원형 영역
+          const divs = Array.from(document.querySelectorAll('div'));
+          let best=null, bestArea=0;
+
+          for(const el of divs){
+            if(!el.querySelector('canvas')) continue;
+            const r = rect(el); if(!r) continue;
+            const area = r.width*r.height;
+            // 너무 작거나 너무 크면 제외
+            if(area < 7000 || area > 90000) continue;
+            // 정사각형에 가까운 것만
+            if(Math.abs(r.width - r.height) > 40) continue;
+            if(area > bestArea){
+              bestArea = area;
+              best = el;
+            }
+          }
+          return best;
+        }
+
+        function collectActionButtons(){
+          // E, R, AUTO(작은 것) 텍스트가 있는 버튼/칩 찾기
+          const els = Array.from(document.querySelectorAll('button,div,span'))
+            .filter(el=>{
+              const t = TXT(el);
+              return t === 'E' || t === 'R' || t === 'AUTO';
+            });
+
+          // 큰 AUTO(가로로 큰 버튼)는 따로
+          const small=[], big=[];
+          for(const el of els){
+            const r = rect(el); if(!r) continue;
+            if(TXT(el)==='AUTO' && r.width > 140) big.push(el);
+            else small.push(el);
+          }
+          return {small, big};
+        }
+
+        function applyFix(){
+          // 1) HUD
+          const {tl, tr} = findHudBlocks();
+          if(tl && !tl.classList.contains('g-ui-hud')) {
+            tl.classList.remove('g-ui-hud-tr');
+            tl.classList.add('g-ui-hud');
+          }
+          if(tr && !tr.classList.contains('g-ui-hud-tr')) {
+            tr.classList.remove('g-ui-hud');
+            tr.classList.add('g-ui-hud-tr');
+          }
+
+          // 2) 조이스틱(오른쪽 하단)
+          const joy = findJoystick();
+          if(joy && !joy.classList.contains('g-ui-joystick')) {
+            joy.classList.add('g-ui-joystick');
+          }
+
+          // 3) 액션 버튼: E/R/AUTO(작은 것)만 도크로 모으기
+          const {small, big} = collectActionButtons();
+          if(small.length){
+            let dock = document.getElementById('g-action-dock');
+            if(!dock){
+              dock = document.createElement('div');
+              dock.id = 'g-action-dock';
+              document.body.appendChild(dock);
+            }
+            // 이미 들어있는 건 중복 방지
+            const existing = new Set(Array.from(dock.children));
+            // E, R, AUTO 순으로 정렬
+            const order = {'E':0,'R':1,'AUTO':2};
+            small.sort((a,b)=>(order[TXT(a)]??9)-(order[TXT(b)]??9));
+
+            for(const el of small){
+              if(existing.has(el)) continue;
+              // 이동(이벤트는 유지됨)
+              dock.appendChild(el);
+            }
+          }
+
+          // 큰 AUTO는 클래스만 줘서 과도한 확대 방지(원래 위치 유지)
+          for(const el of big){
+            if(!el.classList.contains('g-ui-auto-big')) el.classList.add('g-ui-auto-big');
+          }
+        }
+
+        // 생성 타이밍 대응: 로딩 후 반복 + 변화 감지
+        let tries = 0;
+        const timer = setInterval(()=>{
+          tries++;
+          applyFix();
+          if(tries > 180) clearInterval(timer);
+        }, 100);
+
+        const mo = new MutationObserver(()=>applyFix());
+        mo.observe(document.documentElement, {childList:true, subtree:true});
+        window.addEventListener('resize', ()=>setTimeout(applyFix, 50), {passive:true});
+        window.addEventListener('orientationchange', ()=>setTimeout(applyFix, 200), {passive:true});
+      })();
+    </script>
+
     <script type="module" crossorigin src="./assets/index-CZje5KUS.js"></script>
+  </head>
+  <body>
+    <div id="game-container"></div>
   </body>
 </html>
