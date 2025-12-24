@@ -164,5 +164,136 @@
     }
     boot();
   </script>
+
+<style id="ui-tune-v3">
+  :root{
+    --hudScale: 2.8; /* 기본: 2.6~3.0 사이 추천 */
+    --hudTop: calc(10px + env(safe-area-inset-top));
+    --hudLeft: calc(10px + env(safe-area-inset-left));
+    --ctrlPadR: calc(14px + env(safe-area-inset-right));
+    --ctrlPadB: calc(14px + env(safe-area-inset-bottom));
+    --ctrlGap: 10px;
+  }
+</style>
+
+
+<script>
+(function(){
+  const SCALE = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hudScale')) || 2.8;
+
+  function isCanvas(el){ return el && el.tagName && el.tagName.toLowerCase() === 'canvas'; }
+  function nearTopLeft(r){ return r.top < 80 && r.left < 80; }
+
+  // 1) HUD(왼쪽 상단) 자동 확대: "작은 UI 박스"를 찾아 스케일 적용
+  function fixHud(){
+    const s = SCALE();
+    const candidates = Array.from(document.querySelectorAll('div'))
+      .filter(el => !el.id.includes('mobile') && el.id !== 'game-container' && el !== document.body && el !== document.documentElement);
+
+    let best = null, bestScore = -1;
+
+    for(const el of candidates){
+      const r = el.getBoundingClientRect();
+      if(!nearTopLeft(r)) continue;
+      if(r.width < 120 || r.width > 520) continue;
+      if(r.height < 40 || r.height > 320) continue;
+
+      // 내부에 img/canvas/span 등이 좀 있는 "HUD" 형태를 가산점
+      const score =
+        (el.querySelectorAll('img').length * 3) +
+        (el.querySelectorAll('canvas').length * 2) +
+        (el.querySelectorAll('span,div').length * 0.2) -
+        (el.children.length === 0 ? 5 : 0);
+
+      if(score > bestScore){
+        bestScore = score;
+        best = el;
+      }
+    }
+
+    if(!best) return false;
+
+    if(best.dataset._hudFixed === "1") return true;
+    best.dataset._hudFixed = "1";
+
+    // 스케일 + 화면기준 고정
+    best.style.position = 'fixed';
+    best.style.top = getComputedStyle(document.documentElement).getPropertyValue('--hudTop').trim() || '10px';
+    best.style.left = getComputedStyle(document.documentElement).getPropertyValue('--hudLeft').trim() || '10px';
+    best.style.transformOrigin = 'top left';
+    best.style.transform = `scale(${s})`;
+    // 스케일로 화면 밖으로 튀는 것 방지: 내부 좌표계 축소
+    best.style.width = `calc(100% / ${s})`;
+    best.style.pointerEvents = 'none';
+    best.style.zIndex = '10001';
+    return true;
+  }
+
+  // 2) 조이스틱을 오른쪽 하단으로 강제: id/class에 joystick이 들어간 요소를 탐색
+  function fixJoystick(){
+    let joy = document.getElementById('joystick-area')
+      || document.querySelector('[id*="joystick" i]')
+      || document.querySelector('[class*="joystick" i]');
+
+    if(!joy) return false;
+    if(joy.dataset._joyFixed === "1") return true;
+    joy.dataset._joyFixed = "1";
+
+    joy.style.position = 'fixed';
+    joy.style.right = getComputedStyle(document.documentElement).getPropertyValue('--ctrlPadR').trim() || '14px';
+    joy.style.bottom = getComputedStyle(document.documentElement).getPropertyValue('--ctrlPadB').trim() || '14px';
+    joy.style.left = 'auto';
+    joy.style.top = 'auto';
+    joy.style.zIndex = '10000';
+    joy.style.pointerEvents = 'auto';
+    return true;
+  }
+
+  // 3) E/R/AUTO 버튼들을 조이스틱 위로 세로로 정렬 (텍스트 기준)
+  function fixActionButtons(){
+    const btns = Array.from(document.querySelectorAll('button,div'))
+      .filter(el => (el.innerText||'').trim() && ['E','R','AUTO'].includes((el.innerText||'').trim()));
+
+    if(btns.length === 0) return false;
+
+    // 이미 한 번 정리했으면 스킵
+    if(document.getElementById('_actionDock')) return true;
+
+    const dock = document.createElement('div');
+    dock.id = '_actionDock';
+    dock.style.position = 'fixed';
+    dock.style.right = getComputedStyle(document.documentElement).getPropertyValue('--ctrlPadR').trim() || '14px';
+    dock.style.bottom = `calc(${getComputedStyle(document.documentElement).getPropertyValue('--ctrlPadB').trim() || '14px'} + 160px)`; // 조이스틱 위
+    dock.style.display = 'flex';
+    dock.style.flexDirection = 'column';
+    dock.style.gap = getComputedStyle(document.documentElement).getPropertyValue('--ctrlGap').trim() || '10px';
+    dock.style.zIndex = '10000';
+    dock.style.pointerEvents = 'none';
+
+    btns.forEach(b=>{
+      // 버튼/칩이 div일 수도 있어서 포인터 허용
+      b.style.pointerEvents = 'auto';
+      dock.appendChild(b);
+    });
+
+    document.body.appendChild(dock);
+    return true;
+  }
+
+  // 반복적으로 잡아주기(로딩 후 생성 타이밍 대응)
+  let tries = 0;
+  const tick = () => {
+    tries++;
+    fixHud();
+    fixJoystick();
+    fixActionButtons();
+    if(tries > 240) clearInterval(timer);
+  };
+  const timer = setInterval(tick, 80);
+  setTimeout(tick, 200);
+  setTimeout(tick, 800);
+})();
+</script>
+
 </body>
 </html>
