@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+
+  <!-- 모바일/노치/주소창 변동 대응 (iOS Safari, Android Chrome, WebView) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>Gambo Game</title>
+
+  <style>
+    /* 기본 리셋 */
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden; /* 스크롤/바운스 방지 */
+      overscroll-behavior: none;
+      touch-action: none; /* 브라우저 제스처 최소화 */
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* 주소창/하단바 변동 대응: JS가 --vvh(visual viewport height)를 갱신 */
+    :root {
+      --vvh: 100vh;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
+
+    /* 게임 컨테이너: 실제 화면을 꽉 채움 (노치 안전영역 포함) */
+    #game-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: var(--vvh);
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+      box-sizing: border-box;
+      background: #000;
+
+      /* UI 오버레이가 게임 위로 올라가도록 기준점 제공 */
+      display: block;
+      overflow: hidden;
+      transform: translateZ(0);
+    }
+
+    /* Phaser/Canvas가 삐져나오거나 비율 때문에 여백 생기는 문제 완화 */
+    #game-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover; /* 기본: 잘림 없이 꽉 채우기(여백이 있으면 엔진 내부 스케일 설정이 필요) */
+      image-rendering: pixelated;
+      touch-action: none;
+    }
+
+    /* 엔진이 내부적으로 wrapper/div를 만들 때도 같이 100% */
+    #game-container > div,
+    #game-container > div > canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* 오버레이 UI가 게임 위에 겹치도록 (게임이 이런 요소를 만든다면) */
+    .ui-overlay,
+    [data-ui-overlay="true"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: auto;
+      z-index: 10;
+    }
+  
+    /* === UI 위치만 변경: 조이스틱을 오른쪽 하단으로 === */
+    #mobile-controls-container #joystick-area{
+      left: auto !important;
+      right: 0 !important;
+      bottom: 0 !important;
+    }
+    #mobile-controls-container #joystick-area > canvas,
+    #mobile-controls-container #joystick-canvas{
+      left: auto !important;
+      right: 0 !important;
+      bottom: 0 !important;
+    }
+
+  </style>
+
+  <script>
+    // ✅ 주소창/내비바 변동(iOS Safari/Android) 대응: visualViewport 기반으로 실높이 계산
+    (function () {
+      function setVVH() {
+        const vv = window.visualViewport;
+        // visualViewport가 있으면 그 높이를, 없으면 innerHeight
+        const h = vv ? vv.height : window.innerHeight;
+        document.documentElement.style.setProperty('--vvh', h + 'px');
+      }
+
+      // 초기 1회 + 이벤트
+      setVVH();
+      window.addEventListener('resize', setVVH, { passive: true });
+      window.addEventListener('orientationchange', setVVH, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setVVH, { passive: true });
+        window.visualViewport.addEventListener('scroll', setVVH, { passive: true });
+      }
+
+      // iOS에서 첫 터치 후 주소창이 접히며 뷰가 변하는 경우가 있어 한 번 더 갱신
+      window.addEventListener('touchend', function () {
+        setTimeout(setVVH, 50);
+        setTimeout(setVVH, 250);
+      }, { passive: true });
+
+      // 페이지 로드시 주소창 숨김 유도 (가능한 환경에서만, 실패해도 무해)
+      window.addEventListener('load', function () {
+        setTimeout(() => window.scrollTo(0, 1), 0);
+        setTimeout(setVVH, 50);
+        setTimeout(setVVH, 250);
+      });
+    })();
+  </script>
+
+  <!-- 번들 로드 -->
+  <script type="module" crossorigin src="./assets/index-CZje5KUS.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-C9ejXq11.css" />
+</head>
+<body>
+  <div id="game-container"></div>
+</body>
+</html>
