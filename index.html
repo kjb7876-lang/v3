@@ -3,138 +3,166 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-
-  <!-- 모바일/노치/주소창 변동 대응 (iOS Safari, Android Chrome, WebView) -->
+  <!-- 모바일 풀화면/안전영역 -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>EgoIdSuper</title>
 
-  <title>Gambo Game</title>
+  <!-- 번들 CSS: assets/ 또는 같은 폴더 둘 다 시도(404 나도 게임은 동작) -->
+  <link rel="stylesheet" href="./assets/index-C9ejXq11.css">
+  <link rel="stylesheet" href="./index-C9ejXq11.css">
 
   <style>
-    /* 기본 리셋 */
+    /* ===== 화면(캔버스) 풀 유지 ===== */
     html, body {
-      width: 100%;
-      height: 100%;
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: #000;
-      overflow: hidden; /* 스크롤/바운스 방지 */
-      overscroll-behavior: none;
-      touch-action: none; /* 브라우저 제스처 최소화 */
-      -webkit-text-size-adjust: 100%;
+      touch-action: none;
     }
-
-    /* 주소창/하단바 변동 대응: JS가 --vvh(visual viewport height)를 갱신 */
     :root {
-      --vvh: 100vh;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
+      /* visualViewport 기반 실제 높이(주소창/하단바 변동 대응) */
+      --appH: 100vh;
+      /* HUD 확대 (면적 9배 느낌 = scale 3) */
+      --hudScale: 3;
+      /* HUD가 너무 크면 2.6~2.8로 낮춰도 됨 */
+      --hudPad: 10px;
     }
-
-    /* 게임 컨테이너: 실제 화면을 꽉 채움 (노치 안전영역 포함) */
     #game-container {
       position: fixed;
       inset: 0;
       width: 100vw;
-      height: var(--vvh);
-      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
-      box-sizing: border-box;
-      background: #000;
-
-      /* UI 오버레이가 게임 위로 올라가도록 기준점 제공 */
-      display: block;
+      height: var(--appH);
       overflow: hidden;
-      transform: translateZ(0);
+      background: #000;
     }
-
-    /* Phaser/Canvas가 삐져나오거나 비율 때문에 여백 생기는 문제 완화 */
-    #game-container canvas {
+    canvas {
       display: block;
       width: 100% !important;
       height: 100% !important;
-      object-fit: cover; /* 기본: 잘림 없이 꽉 채우기(여백이 있으면 엔진 내부 스케일 설정이 필요) */
-      image-rendering: pixelated;
-      touch-action: none;
     }
 
-    /* 엔진이 내부적으로 wrapper/div를 만들 때도 같이 100% */
-    #game-container > div,
-    #game-container > div > canvas {
-      width: 100% !important;
-      height: 100% !important;
+    /* ===== 모바일 컨트롤(조이스틱/버튼) 오른쪽 하단 유지 ===== */
+    #mobile-controls-container{
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: var(--appH) !important;
+      pointer-events: none;
+      z-index: 9999;
     }
-
-    /* 오버레이 UI가 게임 위에 겹치도록 (게임이 이런 요소를 만든다면) */
-    .ui-overlay,
-    [data-ui-overlay="true"] {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
+    #joystick-area{
+      left: auto !important;
+      right: 0 !important;
+      bottom: 0 !important;
       pointer-events: auto;
-      z-index: 10;
     }
-  
-    /* === UI 위치만 변경: 조이스틱을 오른쪽 하단으로 === */
-    #mobile-controls-container #joystick-area{
+    /* 버튼 묶음(기본은 오른쪽) */
+    #mobile-skill-buttons{
+      right: calc(12px + env(safe-area-inset-right)) !important;
       left: auto !important;
-      right: 0 !important;
-      bottom: 0 !important;
-    }
-    #mobile-controls-container #joystick-area > canvas,
-    #mobile-controls-container #joystick-canvas{
-      left: auto !important;
-      right: 0 !important;
-      bottom: 0 !important;
+      pointer-events: none;
     }
 
+    /* ===== HUD 스케일: "컨테이너만 커져서 화면 밖으로 나가는" 문제 방지 =====
+       핵심: scale 적용 + (100%/scale)로 내부 좌표계를 줄여서 최종적으로 화면에 딱 맞게 확대
+    */
+    #ui-scale-wrapper{
+      position: absolute;
+      top: 0; left: 0;
+      width: calc(100% / var(--hudScale));
+      height: calc(100% / var(--hudScale));
+      transform: scale(var(--hudScale));
+      transform-origin: top left;
+      pointer-events: none; /* HUD는 보통 클릭 안 함 */
+      padding: var(--hudPad);
+      box-sizing: border-box;
+    }
+
+    /* HUD 안의 클릭 요소가 있다면 클릭 가능하게 */
+    #ui-scale-wrapper button,
+    #ui-scale-wrapper [role="button"],
+    #ui-scale-wrapper .pointer-events-auto{
+      pointer-events: auto;
+    }
   </style>
+</head>
+
+<body>
+  <div id="game-container"></div>
 
   <script>
-    // ✅ 주소창/내비바 변동(iOS Safari/Android) 대응: visualViewport 기반으로 실높이 계산
-    (function () {
-      function setVVH() {
-        const vv = window.visualViewport;
-        // visualViewport가 있으면 그 높이를, 없으면 innerHeight
-        const h = vv ? vv.height : window.innerHeight;
-        document.documentElement.style.setProperty('--vvh', h + 'px');
+    // 실제 보이는 높이를 CSS 변수로 반영(주소창/하단바 변동 대응)
+    (function(){
+      function setAppH(){
+        var h = window.innerHeight;
+        if (window.visualViewport && window.visualViewport.height) h = Math.floor(window.visualViewport.height);
+        document.documentElement.style.setProperty('--appH', h + 'px');
       }
-
-      // 초기 1회 + 이벤트
-      setVVH();
-      window.addEventListener('resize', setVVH, { passive: true });
-      window.addEventListener('orientationchange', setVVH, { passive: true });
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', setVVH, { passive: true });
-        window.visualViewport.addEventListener('scroll', setVVH, { passive: true });
-      }
-
-      // iOS에서 첫 터치 후 주소창이 접히며 뷰가 변하는 경우가 있어 한 번 더 갱신
-      window.addEventListener('touchend', function () {
-        setTimeout(setVVH, 50);
-        setTimeout(setVVH, 250);
-      }, { passive: true });
-
-      // 페이지 로드시 주소창 숨김 유도 (가능한 환경에서만, 실패해도 무해)
-      window.addEventListener('load', function () {
-        setTimeout(() => window.scrollTo(0, 1), 0);
-        setTimeout(setVVH, 50);
-        setTimeout(setVVH, 250);
-      });
+      window.addEventListener('resize', setAppH, {passive:true});
+      window.addEventListener('orientationchange', setAppH, {passive:true});
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppH, {passive:true});
+      setAppH();
     })();
   </script>
 
-  <!-- 번들 로드 -->
-  <script type="module" crossorigin src="./assets/index-CZje5KUS.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-C9ejXq11.css" />
-</head>
-<body>
-  <div id="game-container"></div>
+  <script>
+    // HUD만 크게: game-ui-container가 만들어진 뒤, 모바일 컨트롤은 제외하고 나머지를 wrapper로 감싸서 스케일
+    (function(){
+      function wrapAndScaleUI(){
+        var ui = document.getElementById('game-ui-container');
+        if(!ui) return false;
+        if(document.getElementById('ui-scale-wrapper')) return true;
+
+        var wrapper = document.createElement('div');
+        wrapper.id = 'ui-scale-wrapper';
+
+        // ui의 "직접 자식" 중, mobile-controls-container는 그대로 두고 나머지는 wrapper로 이동
+        var kids = Array.from(ui.children);
+        kids.forEach(function(el){
+          if (el && el.id === 'mobile-controls-container') return;
+          wrapper.appendChild(el);
+        });
+
+        // wrapper를 맨 앞에 넣어 HUD가 위에 보이게
+        ui.insertBefore(wrapper, ui.firstChild);
+        return true;
+      }
+
+      // DOM 생성 타이밍 대응
+      var tries = 0;
+      var t = setInterval(function(){
+        tries++;
+        if (wrapAndScaleUI() || tries > 200) clearInterval(t);
+      }, 50);
+    })();
+  </script>
+
+  <!-- 번들 JS: assets/ 또는 같은 폴더 둘 다 시도 -->
+  <script type="module">
+    async function boot(){
+      const candidates = [
+        "./assets/index-CZje5KUS.js",
+        "./index-CZje5KUS.js"
+      ];
+      for (const src of candidates){
+        try{
+          await import(src);
+          return;
+        }catch(e){
+          // 다음 후보 시도
+        }
+      }
+      // 둘 다 실패하면 사용자에게 최소 힌트(검은 화면 방지)
+      const msg = document.createElement("div");
+      msg.style.cssText = "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:14px monospace;background:#000;z-index:99999;";
+      msg.textContent = "JS 로딩 실패: index-*.js 경로를 확인해주세요 (assets/ 폴더 여부)";
+      document.body.appendChild(msg);
+      console.error("Failed to load game bundle from candidates.");
+    }
+    boot();
+  </script>
 </body>
 </html>
